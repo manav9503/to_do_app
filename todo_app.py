@@ -1,4 +1,3 @@
-# vercel_app.py
 import os
 from django.conf import settings
 from django.core.wsgi import get_wsgi_application
@@ -6,12 +5,12 @@ from django.urls import path
 from django.shortcuts import render, redirect
 from django.db import models
 from django import forms
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 
 # Configure Django settings
 settings.configure(
-    DEBUG=False,
-    SECRET_KEY='django-insecure-+j!p%*^!7#qy$5z@3r9v8b2m(xs5e&0k)l6o#n1i!d4h7g9f*',
+    DEBUG=os.environ.get('DEBUG', 'False') == 'True',
+    SECRET_KEY=os.environ.get('SECRET_KEY', 'django-insecure-default-key'),
     ROOT_URLCONF=__name__,
     DATABASES={
         'default': {
@@ -44,6 +43,7 @@ settings.configure(
     STATIC_URL='/static/',
     MIDDLEWARE=[
         'django.middleware.security.SecurityMiddleware',
+        'whitenoise.middleware.WhiteNoiseMiddleware',
         'django.contrib.sessions.middleware.SessionMiddleware',
         'django.middleware.common.CommonMiddleware',
         'django.middleware.csrf.CsrfViewMiddleware',
@@ -52,6 +52,10 @@ settings.configure(
         'django.middleware.clickjacking.XFrameOptionsMiddleware',
     ],
 )
+
+# Initialize Django
+from django.core.management import execute_from_command_line
+execute_from_command_line(['manage.py', 'migrate'])
 
 # Create models
 class TodoItem(models.Model):
@@ -122,7 +126,6 @@ app = get_wsgi_application()
 def handler(request):
     from io import BytesIO
     from django.core.handlers.wsgi import WSGIRequest
-    from django.core.handlers.wsgi import WSGIHandler
     
     # Convert Vercel request to Django WSGI request
     environ = {
@@ -142,7 +145,8 @@ def handler(request):
     # Create WSGI request
     wsgi_request = WSGIRequest(environ)
     
-    # Process request
+    # Process request through Django
+    from django.core.handlers.wsgi import WSGIHandler
     response = WSGIHandler()(wsgi_request)
     
     # Convert Django response to Vercel response
